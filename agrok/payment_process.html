@@ -47,6 +47,7 @@
               showResult('Error', 'Missing query parameters');
               return;
           }
+          console.log(params);
           var url = 'https://us-central1-agro-k-dev.cloudfunctions.net/getConvergePayToken';
           fetch(url, {
               method: 'POST', // or 'GET', depending on your backend
