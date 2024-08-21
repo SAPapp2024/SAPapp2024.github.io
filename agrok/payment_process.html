@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <title>Agro-K Payment</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://demo.convergepay.com/hosted-payments/PayWithConverge.js"></script>
@@ -16,7 +18,7 @@
                 email: null,
                 companyId: null,
                 verificationToken: null,
-                shipping: null // Add the shipping parameter
+                shipping: nill
             };
 
             var queryString = window.location.search.substring(1);
@@ -27,13 +29,12 @@
                 var key = decodeURIComponent(pair[0]);
                 var value = decodeURIComponent(pair[1]);
 
-                if (key === 'amount' || key === 'zip' || key === 'address' || key === 'email' || key === 'is_admin' || key === 'card_token' || key === 'companyId' || key === 'save_card' || key==='shipping') {
+                if (key === 'amount' || key === 'zip' || key === 'address' || key === 'email' || key === 'is_admin' || key === 'card_token' || key === 'companyId' || key === 'save_card' || key === 'shipping') {
                     queryParams[key] = value;
                 } else if (key === 'verificationToken') {
                     queryParams['verificationToken'] = pair[1];
                 }
             }
-
             console.log(`url is ${window.location.search}`);
             console.log(`queryParams is ${JSON.stringify(queryParams)}`);
 
@@ -46,7 +47,6 @@
               showResult('Error', 'Missing query parameters');
               return;
           }
-          console.log(params);
           var url = 'https://us-central1-agro-k-dev.cloudfunctions.net/getConvergePayToken';
           fetch(url, {
               method: 'POST', // or 'GET', depending on your backend
@@ -94,27 +94,27 @@
                   window.parent.postMessage(JSON.stringify({
                     type: 'error',
                     data: error
-                  }, null, '\t'), window.location.href);
+                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
                 },
                 onCancelled: function () {
                   console.log(`function is onCancelled`)
                   window.parent.postMessage(JSON.stringify({
-                    type: 'canceled',
-                  }, null, '\t'), window.location.href);
+                    type: 'cancelled',
+                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
                 },
                 onDeclined: function (response) {
                   console.log(`function is onDeclined`)
                   window.parent.postMessage(JSON.stringify({
                     type: 'declined',
                     data: response
-                  }, null, '\t'), window.location.href);
+                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
                 },
                 onApproval: function (response) {
-                  console.log(`function is onApproval - ${window.location.href}`)
+                  console.log(`function is onApproval - ${JSON.stringify(response)}`)
                   window.parent.postMessage(JSON.stringify({
                     type: 'approved',
                     data: response
-                  }, null, '\t'), window.location.href);
+                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
                 }
             };
 
@@ -129,7 +129,7 @@
 </head>
 
 <body>
-<div id="txn_status"></div>
-<div id="txn_response"></div>
+<div id="txn_status"><b>Error</b></div>
+<div id="txn_response">Missing query parameters</div>
 </body>
 </html>

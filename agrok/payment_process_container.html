@@ -1,41 +1,152 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Parameter Validation with Message Handling</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <style>
-        /* Set body and html to full height and no margin */
         html, body {
             height: 100%;
             margin: 0;
+            padding: 0;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column; /* Align items vertically */
+            justify-content: center; /* Center items vertically */
+            align-items: center; /* Center items horizontally */
             text-align: center;
         }
-        /* Style for the invalid message */
-        .invalid-message {
+        .invalid-message, .loading-message, .success-message, .error-message, .declined-message {
             font-size: 24px;
+            display: none;
+            max-width: 90%; /* Limit the width to 90% of the container */
+            margin: 0 auto; /* Auto margins for horizontal centering */
+            text-align: center;
+        }
+        .loading-message, .success-message {
+            color: green;
+        }
+        .error-message, .declined-message {
             color: red;
         }
-        /* Set the iframe to take up full width and height of the body */
         iframe {
             width: 100%;
             height: 100%;
-            border: none; /* Optional: removes the border around the iframe */
-            display: none; /* Initially hidden */
+            border: none;
+            display: none;
         }
     </style>
     <script>
-        // Function to listen to messages from the iframe
-        function receiveMessage(event) {
-            // Check if the received message has a property 'type'
-            if (event.data) {
-                // Post the message to the parent window
-                window.parent.postMessage(event.data, "*");
+        var fromMobileApp = '';
+        var companyId = 0;
+        var isAdmin = 0;
+        var saveCard = 0;
+        var amount = 0;
+        var cardToken = '';
+        var verificationToken = '';
+        var newCardToken;
+        var shipping = '';
+        
+        function xmlStringToMap(xmlString) {
+            let parser = new DOMParser();
+            let xmlDoc = parser.parseFromString(xmlString, "application/xml");
+            let map = new Map();
+            xmlNode.childNodes.forEach(node => {
+                if (node.nodeType === 1) { // Element
+                    map.set(node.nodeName, node.textContent);
+                }
+            });
+            return map;
+        }
+
+        function assignBarcodes(body) {
+            var url = 'https://us-central1-agro-k-dev.cloudfunctions.net/assignBarcodesFromPurchase';
+                fetch(url, {
+                  method: 'POST',
+                  body: JSON.stringify(body),
+                  headers: {
+                       'Content-Type': 'application/json',
+                  },
+                })
+                .then(data => {
+                    console.log(`success - ${data}`);
+                    $('.loading-message').hide();
+                    $('.success-message').show();
+                    setTimeout(() => {
+                        if (fromMobileApp === "0") {
+                            window.parent.postMessage({
+                                result: 'approved'
+                            }, "*");
+                        } else {
+                            window.location.href = "agrokapp://myapp";    
+                        }
+                    }, 2000);
+                })
+                .catch((error) => {
+                  console.log(`Errorcito + ${error}`);
+                  $('.loading-message').hide();
+                  $('.error-message').show();
+                  setTimeout(() => {
+                      if (fromMobileApp === "0") {
+                            window.parent.postMessage({
+                                result: 'error'
+                            }, "*");
+                        } else {
+                            window.location.href = "agrokapp://myapp";    
+                        }
+                  }, 2000);
+                });
+        }
+        
+        function receiveMessage(eventMessage) {
+            var event = JSON.parse(eventMessage.data);
+            console.log(`here's the data ${event}`);
+            if (event.type == 'approved') {
+                $('.loading-message').show();
+                const body = {
+                      companyId: companyId,
+                      amount: amount,
+                  }
+                if (isAdmin == 1 && event.data['ssl_token'] != null && event.data['ssl_token'] != '') {
+                    body.cardToken = event.data['ssl_token'];
+                    body.cardCompanyName = event.data['ssl_card_short_description'];
+                    body.cardExpDate = event.data['ssl_exp_date'];
+                    body.cardNumber = event.data['ssl_card_number'];
+                    body.companyId = companyId;
+                }
+                assignBarcodes(body);
+            } else if (event.type == 'cancelled') {
+                if (fromMobileApp === "0") {
+                    window.parent.postMessage({
+                                result: 'cancelled'
+                            }, "*");
+                } else {
+                    window.location.href = "agrokapp://myapp";    
+                }
+            } else if (event.type == 'error') {
+                $('.error-message').show();
+                setTimeout(() => {
+                        if (fromMobileApp === "0") {
+                            window.parent.postMessage({
+                                result: 'error'
+                            }, "*");
+                        } else {
+                            window.location.href = "agrokapp://myapp";    
+                        }
+                    }, 2000);
+            } else if (event.type == 'declined') {
+                $('.declined-message').show();
+                setTimeout(() => {
+                        if (fromMobileApp === "0") {
+                            window.parent.postMessage({
+                                result: 'declined'
+                            }, "*");
+                        } else {
+                            window.location.href = "agrokapp://myapp";    
+                        }
+                    }, 2000);
             }
         }
 
-        // Function to get URL parameters
         function getParameterByName(name, url = window.location.href) {
             name = name.replace(/[\[\]]/g, '\\$&');
             var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
@@ -45,47 +156,127 @@
             return decodeURIComponent(results[2].replace(/\+/g, ' '));
         }
 
-        // Function to check if all required params are present
+        function decodeVerificationToken(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+        
+            // Return the parameter value without decoding
+            return results[2].replace(/\+/g, ' ');
+        }
+        
+
         function allParamsPresent() {
-            const requiredParams = ['amount', 'email', 'zip', 'address'];
+            const requiredParams = ['from_mobile_app', 'amount', 'email', 'is_admin', 'zip', 'address', 'company_id', 'save_card', 'verification_token', 'shipping'];
             return requiredParams.every(param => getParameterByName(param) !== null);
         }
 
-        // Function to set the content based on parameter validation
         function setContent() {
             if (allParamsPresent()) {
-                // Set iframe source and display it
-                const iframe = document.querySelector('iframe');
-                iframe.src = buildIframeSrc();
-                iframe.style.display = 'block';
+                console.log(`all params present`);
+                fromMobileApp = getParameterByName('from_mobile_app')
+                companyId = getParameterByName('company_id')
+                isAdmin = getParameterByName('is_admin')
+                amount = getParameterByName('amount')
+                cardToken = getParameterByName('card_token')
+                saveCard = getParameterByName('save_card')
+                shipping = getParameterByName('shipping')
+                verificationToken = decodeVerificationToken('verification_token')
+                $('.loading-message').show();
+                if (cardToken != null && cardToken != "") {
+                    var url = 'https://us-central1-agro-k-dev.cloudfunctions.net/payWithToken';
+                    const body = {
+                        companyId: companyId,
+                        amount: amount,
+                        token: cardToken,
+                        verificationToken: verificationToken,
+                        shipping: shipping
+                      }
+                    fetch(url, {
+                      method: 'POST',
+                      body: JSON.stringify(body),
+                      headers: {
+                           'Content-Type': 'application/json',
+                      },
+                    })
+                    .then(response => {
+                        console.log(response);
+                        return response.text();
+                      })
+                    .then(data => {
+                        console.log(`data from payWithToken = ${JSON.stringify(data)}`);
+                        const body = {
+                          companyId: companyId,
+                          amount: amount,
+                      }
+                        assignBarcodes(body);
+                    })
+                    .catch((error) => {
+                      console.log(`Errorcito + ${error}`);
+                      $('.loading-message').hide();
+                      $('.error-message').show();
+                      setTimeout(() => {
+                          if (fromMobileApp === "0") {
+                                window.parent.postMessage({
+                                    result: 'error'
+                                }, "*");
+                            } else {
+                                window.location.href = "agrokapp://myapp";    
+                            }
+                      }, 2000);
+                    });
+                } else {
+                    const iframe = document.querySelector('iframe');
+                    iframe.onload = function() {
+                        console.log(`iframe loaded`);
+                        $('.loading-message').hide();
+                    };
+                    iframe.src = buildIframeSrc();
+                    iframe.style.display = 'block';
+                }
             } else {
-                // Display invalid message
+                console.log(`some params not present`);
                 document.body.innerHTML = '<div class="invalid-message">Invalid params</div>';
             }
         }
 
-        // Function to build the iframe URL with parameters
+        function toUrlSafeBase64(base64String) {
+            return base64String.replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
         function buildIframeSrc() {
-            const baseUrl = "https://SAPapp2024.github.io/agrok/payment_process.html"; // Replace with your URL
+            const baseUrl = "https://sapapp2024.github.io/payment_process.html";
+            console.log(`check1 = ${getParameterByName('verification_token')} / check2 = ${verificationToken}`);
             const params = {
                 amount: getParameterByName('amount'),
                 email: getParameterByName('email'),
                 zip: getParameterByName('zip'),
                 address: getParameterByName('address'),
-                shipping: getParameterByName('shipping')
+                is_admin: isAdmin,
+                save_card: saveCard,
+                companyId: companyId,
+                verificationToken: verificationToken,
+                shipping: shipping
             };
-            const queryString = Object.keys(params).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key])).join('&');
+            if (cardToken != null) {
+                params.card_token = cardToken;
+            }
+            
+            const queryString = Object.keys(params).map(key => {
+                if (key == 'verificationToken') {
+                    return `verificationToken=${toUrlSafeBase64(verificationToken)}`
+                } else {
+                    return encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
+                }
+            }).join('&');
             return baseUrl + '?' + queryString;
         }
 
-        // Set up the event listener for receiving messages
         window.addEventListener("message", receiveMessage, false);
 
         window.onload = setContent;
-    </script>
+        </script>
 </head>
-<body>
-<!-- The iframe embedding another website -->
-<iframe></iframe>
-</body>
-</html>
+<body><div class="invalid-message">Invalid params</div></body></html>
