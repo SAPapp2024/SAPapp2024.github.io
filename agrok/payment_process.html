@@ -94,27 +94,27 @@
                   window.parent.postMessage(JSON.stringify({
                     type: 'error',
                     data: error
-                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
+                  }, null, '\t'), "https://sapapp2024.github.io/agrok/payment_process_container.html");
                 },
                 onCancelled: function () {
                   console.log(`function is onCancelled`)
                   window.parent.postMessage(JSON.stringify({
                     type: 'cancelled',
-                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
+                  }, null, '\t'), "https://sapapp2024.github.io/agrok/payment_process_container.html");
                 },
                 onDeclined: function (response) {
                   console.log(`function is onDeclined`)
                   window.parent.postMessage(JSON.stringify({
                     type: 'declined',
                     data: response
-                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
+                  }, null, '\t'), "https://sapapp2024.github.io/agrok/payment_process_container.html");
                 },
                 onApproval: function (response) {
                   console.log(`function is onApproval - ${JSON.stringify(response)}`)
                   window.parent.postMessage(JSON.stringify({
                     type: 'approved',
                     data: response
-                  }, null, '\t'), "https://sapapp2024.github.io/payment_process_container.html");
+                  }, null, '\t'), "https://sapapp2024.github.io/agrok/payment_process_container.html");
                 }
             };
 
